@@ -1,658 +1,96 @@
-
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
+// @ts-ignore CSS is loaded by the bundler; it has no TypeScript module declaration.
 import './App.css'
 
-// Estructura de los módulos de formación docente
-type Modulo = {
-  id: number
-  titulo: string
-  descripcion: string
-  icono: string
-}
+type Seccion = 'Inicio' | 'Mapa de la problemática' | 'La solución' | 'Formación docente' | 'Biblioteca de clases' | 'Mi planeador'
+type Modulo = { id: number; titulo: string; descripcion: string; enfoque: string }
+type Actividad = { id: number; titulo: string; categoria: string; descripcion: string; duracion: string; proposito: string }
+type ActividadPlaneada = { id: number; titulo: string; area: string; fecha: string }
 
-// Estructura de las actividades de la biblioteca
-type Actividad = {
-  titulo: string
-  categoria: string
-  descripcion: string
-  duracion: string
-}
-
-// Estructura de las actividades del planeador
-type ActividadPlaneada = {
-  id: number
-  titulo: string
-  area: string
-  fecha: string
-}
-
-// Módulos iniciales del prototipo
+const secciones: Seccion[] = ['Inicio', 'Mapa de la problemática', 'La solución', 'Formación docente', 'Biblioteca de clases', 'Mi planeador']
 const modulos: Modulo[] = [
-  {
-    id: 1,
-    titulo: 'Conocer el territorio',
-    descripcion: 'Reconocer la comunidad, su historia y su entorno.',
-    icono: '01',
-  },
-  {
-    id: 2,
-    titulo: 'Enseñar desde el tutunakú',
-    descripcion: 'Integrar la lengua y la identidad cultural al aprendizaje.',
-    icono: '02',
-  },
-  {
-    id: 3,
-    titulo: 'Saberes comunitarios',
-    descripcion: 'Aprender de las familias, los oficios y las tradiciones.',
-    icono: '03',
-  },
-  {
-    id: 4,
-    titulo: 'Planeación flexible',
-    descripcion: 'Adaptar las actividades al contexto del alumnado.',
-    icono: '04',
-  },
-  {
-    id: 5,
-    titulo: 'Actividades prácticas',
-    descripcion: 'Aprender mediante experiencias cercanas a la comunidad.',
-    icono: '05',
-  },
-  {
-    id: 6,
-    titulo: 'Evaluar sin excluir',
-    descripcion: 'Observar el aprendizaje de distintas maneras.',
-    icono: '06',
-  },
-  {
-    id: 7,
-    titulo: 'Escuela y comunidad',
-    descripcion: 'Crear vínculos entre docentes, familias y comunidad.',
-    icono: '07',
-  },
-  {
-    id: 8,
-    titulo: 'Permanencia escolar',
-    descripcion: 'Identificar barreras y apoyar la continuidad educativa.',
-    icono: '08',
-  },
+  { id: 1, titulo: 'Conocer el territorio', descripcion: 'Reconocer la comunidad, su historia y su entorno.', enfoque: 'Observar el entorno, identificar espacios significativos y recuperar preguntas sobre la vida cotidiana de la comunidad.' },
+  { id: 2, titulo: 'Enseñar desde el tutunakú', descripcion: 'Integrar la lengua y la identidad cultural al aprendizaje.', enfoque: 'Reconocer la lengua de los estudiantes como un recurso para dialogar, explicar, preguntar y construir conocimientos.' },
+  { id: 3, titulo: 'Saberes comunitarios', descripcion: 'Aprender de las familias, los oficios y las tradiciones.', enfoque: 'Identificar conocimientos presentes en las familias y la comunidad, y explorar formas respetuosas de vincularlos con el trabajo escolar.' },
+  { id: 4, titulo: 'Planeación flexible', descripcion: 'Adaptar las actividades al contexto del alumnado.', enfoque: 'Ajustar propósitos, materiales, tiempos y formas de participación a las características del grupo y a los recursos disponibles.' },
+  { id: 5, titulo: 'Actividades prácticas', descripcion: 'Aprender mediante experiencias cercanas a la comunidad.', enfoque: 'Diseñar experiencias de observación, conversación, registro y resolución de problemas relacionados con el entorno.' },
+  { id: 6, titulo: 'Evaluar sin excluir', descripcion: 'Observar el aprendizaje de distintas maneras.', enfoque: 'Considerar evidencias diversas: explicaciones orales, producciones, colaboración, registros y procesos, además de productos finales.' },
+  { id: 7, titulo: 'Escuela y comunidad', descripcion: 'Crear vínculos entre docentes, familias y comunidad.', enfoque: 'Promover el diálogo con familias y actores comunitarios, cuidando el consentimiento y el reconocimiento de sus aportaciones.' },
+  { id: 8, titulo: 'Permanencia escolar', descripcion: 'Identificar barreras y apoyar la continuidad educativa.', enfoque: 'Reconocer factores que pueden dificultar la participación y continuidad escolar, y pensar respuestas desde la colaboración.' },
 ]
-
-// Actividades de ejemplo para la biblioteca
 const actividades: Actividad[] = [
-  {
-    titulo: 'Contamos lo que nos rodea',
-    categoria: 'Matemáticas',
-    descripcion:
-      'Explorar cantidades y clasificaciones usando objetos cotidianos de la comunidad.',
-    duracion: '30 minutos',
-  },
-  {
-    titulo: 'El entorno natural',
-    categoria: 'Ciencias',
-    descripcion:
-      'Observar plantas, animales y elementos del entorno para formular preguntas.',
-    duracion: '40 minutos',
-  },
-  {
-    titulo: 'Historias de nuestra comunidad',
-    categoria: 'Lengua y cultura',
-    descripcion:
-      'Recuperar relatos familiares y conversar sobre la memoria comunitaria.',
-    duracion: '45 minutos',
-  },
+  { id: 1, titulo: 'Contamos lo que nos rodea', categoria: 'Matemáticas', descripcion: 'Explorar cantidades, medidas y clasificaciones a partir de objetos y situaciones cotidianas de la comunidad.', duracion: '30 minutos', proposito: 'Relacionar ideas matemáticas con observaciones y objetos cercanos.' },
+  { id: 2, titulo: 'El entorno natural', categoria: 'Ciencias', descripcion: 'Observar plantas, animales y elementos del entorno para formular preguntas y organizar hallazgos.', duracion: '40 minutos', proposito: 'Practicar la observación y la formulación de preguntas sobre el entorno.' },
+  { id: 3, titulo: 'Historias de nuestra comunidad', categoria: 'Lengua y cultura', descripcion: 'Recuperar relatos familiares y conversar sobre la memoria comunitaria, con autorización de quienes participan.', duracion: '45 minutos', proposito: 'Reconocer la oralidad y la memoria local como fuentes de aprendizaje.' },
 ]
-
-const AREAS = [
-  'Lengua y cultura',
-  'Matemáticas',
-  'Ciencias',
-  'Saberes comunitarios',
-  'Planeación interdisciplinaria',
-  'Otra',
-]
+const AREAS = ['Lengua y cultura', 'Matemáticas', 'Ciencias', 'Saberes comunitarios', 'Planeación interdisciplinaria', 'Otra']
+const FOTO_SIERRA = 'https://commons.wikimedia.org/wiki/Special:FilePath/SIERRA_NORTE_DE_PUEBLA_MUNICIPIO_DE_ATEMPAN.jpg?width=1800'
 
 function cargarActividades(): ActividadPlaneada[] {
   try {
     const guardadas = localStorage.getItem('territorio-plan')
-
-    if (!guardadas) {
-      return []
-    }
-
+    if (!guardadas) return []
     const datos: unknown = JSON.parse(guardadas)
-
-    if (!Array.isArray(datos)) {
-      return []
-    }
-
-    return datos.filter(
-      (item): item is ActividadPlaneada =>
-        typeof item.id === 'number' &&
-        typeof item.titulo === 'string' &&
-        typeof item.area === 'string' &&
-        typeof item.fecha === 'string',
-    )
-  } catch {
-    return []
-  }
+    if (!Array.isArray(datos)) return []
+    return datos.filter((item): item is ActividadPlaneada => item !== null && typeof item === 'object' && typeof item.id === 'number' && typeof item.titulo === 'string' && typeof item.area === 'string' && typeof item.fecha === 'string').sort((a, b) => a.fecha.localeCompare(b.fecha))
+  } catch { return [] }
 }
 
 function App() {
-  const [seccion, setSeccion] = useState('Inicio')
+  const [seccion, setSeccion] = useState<Seccion>('Inicio')
   const [busqueda, setBusqueda] = useState('')
-
-  const [moduloSeleccionado, setModuloSeleccionado] =
-    useState<Modulo | null>(null)
-
-  const [actividadSeleccionada, setActividadSeleccionada] =
-    useState<Actividad | null>(null)
-
-  // Recupera las actividades guardadas al iniciar la aplicación
-  const [actividadesPlaneadas, setActividadesPlaneadas] =
-    useState<ActividadPlaneada[]>(cargarActividades)
-
-  // Datos del formulario
+  const [moduloSeleccionado, setModuloSeleccionado] = useState<Modulo | null>(null)
+  const [actividadSeleccionada, setActividadSeleccionada] = useState<Actividad | null>(null)
+  const [actividadesPlaneadas, setActividadesPlaneadas] = useState<ActividadPlaneada[]>(cargarActividades)
   const [nuevoTitulo, setNuevoTitulo] = useState('')
   const [nuevaArea, setNuevaArea] = useState('Lengua y cultura')
   const [nuevaFecha, setNuevaFecha] = useState('')
-
-  // Mensaje para confirmar acciones
   const [mensaje, setMensaje] = useState('')
 
-  // Guarda la lista cada vez que cambia
   useEffect(() => {
-    try {
-      localStorage.setItem(
-        'territorio-plan',
-        JSON.stringify(actividadesPlaneadas),
-      )
-    } catch {
-      setMensaje(
-        'No se pudieron guardar los cambios en este navegador.',
-      )
-    }
+    try { localStorage.setItem('territorio-plan', JSON.stringify(actividadesPlaneadas)) }
+    catch { setMensaje('No se pudieron guardar los cambios en este navegador.') }
   }, [actividadesPlaneadas])
 
-  // Filtra la biblioteca de actividades
-  const actividadesFiltradas = actividades.filter((actividad) =>
-    `${actividad.titulo} ${actividad.categoria} ${actividad.descripcion}`
-      .toLowerCase()
-      .includes(busqueda.toLowerCase()),
-  )
-
-  // Cambia de sección y cierra los detalles abiertos
-  function cambiarSeccion(nombre: string) {
-    setSeccion(nombre)
-    setModuloSeleccionado(null)
-    setActividadSeleccionada(null)
-    setMensaje('')
-  }
-
-  // Agrega una actividad al planeador
-  function agregarActividad(evento: FormEvent<HTMLFormElement>) {
-    evento.preventDefault()
-
+  const actividadesFiltradas = useMemo(() => actividades.filter(a => `${a.titulo} ${a.categoria} ${a.descripcion}`.toLowerCase().includes(busqueda.toLowerCase())), [busqueda])
+  function cambiarSeccion(nombre: Seccion) { setSeccion(nombre); setModuloSeleccionado(null); setActividadSeleccionada(null); setMensaje(''); setBusqueda('') }
+  function agregarActividad(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault()
     const titulo = nuevoTitulo.trim()
-
-    if (!titulo || !nuevaFecha) {
-      setMensaje('Completa el nombre y la fecha de la actividad.')
-      return
-    }
-
-    const nuevaActividad: ActividadPlaneada = {
-      id: Date.now(),
-      titulo,
-      area: nuevaArea,
-      fecha: nuevaFecha,
-    }
-
-    setActividadesPlaneadas((actuales) =>
-      [...actuales, nuevaActividad].sort((a, b) =>
-        a.fecha.localeCompare(b.fecha),
-      ),
-    )
-
-    setNuevoTitulo('')
-    setNuevaFecha('')
-    setMensaje('¡Actividad agregada a tu planeador!')
+    if (!titulo || !nuevaFecha) { setMensaje('Completa el nombre y la fecha de la actividad.'); return }
+    setActividadesPlaneadas(actuales => [...actuales, { id: Date.now(), titulo, area: nuevaArea, fecha: nuevaFecha }].sort((a, b) => a.fecha.localeCompare(b.fecha)))
+    setNuevoTitulo(''); setNuevaFecha(''); setMensaje('Actividad agregada a tu planeador.')
   }
-
-  // Elimina una actividad
-  function eliminarActividad(id: number) {
-    setActividadesPlaneadas((actuales) =>
-      actuales.filter((actividad) => actividad.id !== id),
-    )
-
-    setMensaje('Actividad eliminada del planeador.')
-  }
-
-  // Pasa una actividad de la biblioteca al formulario del planeador
-  function planearActividad(actividad: Actividad) {
-    setNuevoTitulo(actividad.titulo)
-    setNuevaArea(actividad.categoria)
-    setActividadSeleccionada(null)
-    setSeccion('Mi planeador')
-    setMensaje('Elige una fecha para terminar de planificar esta actividad.')
-  }
-
-  return (
-    <div className="app">
-      <aside className="sidebar">
-        <div className="brand">
-          <span className="brand-icon"></span>
-          <div>
-            <h2>Aprender</h2>
-            <p>desde el territorio</p>
-          </div>
-        </div>
-
-        <p className="menu-label">ESPACIO DOCENTE</p>
-
-        <nav className="menu">
-          {[
-            'Inicio',
-            'Formación docente',
-            'Biblioteca de clases',
-            'Mi planeador',
-          ].map((nombre) => (
-            <button
-              key={nombre}
-              className={`menu-item ${seccion === nombre ? 'active' : ''}`}
-              onClick={() => cambiarSeccion(nombre)}
-            >
-              <span>
-                {{
-                  Inicio: '⌂',
-                  'Formación docente': '▤',
-                  'Biblioteca de clases': '▧',
-                  'Mi planeador': '▦',
-                }[nombre]}
-              </span>
-              {nombre}
-            </button>
-          ))}
-        </nav>
-
-        <div className="sidebar-note">
-          <p>
-            <strong>Aprender con sentido</strong>
-            <br />
-            La comunidad también es un espacio de aprendizaje.
-          </p>
-        </div>
-      </aside>
-
-      <main className="main">
-        <header className="topbar">
-          <div>
-            <p className="eyebrow">EDUCACIÓN INTERCULTURAL</p>
-            <h1>{seccion}</h1>
-          </div>
-
-          <div className="profile">
-             <span>Espacio docente</span>
-          </div>
-        </header>
-
-        {/* PANTALLA DE INICIO */}
-        {seccion === 'Inicio' && (
-          <>
-            <section className="hero">
-              <div className="hero-content">
-                <p className="eyebrow">
-                  BIENVENIDA A TU ESPACIO DE APRENDIZAJE
-                </p>
-
-                <h2>Enseñar también es escuchar al territorio.</h2>
-
-                <p>
-                  Explora ideas, recupera saberes comunitarios y diseña
-                  experiencias educativas conectadas con la vida cotidiana.
-                </p>
-
-                <button
-                  className="primary-button"
-                  onClick={() => cambiarSeccion('Formación docente')}
-                >
-                  Explorar módulos <span>→</span>
-                </button>
-              </div>
-
-              <div className="hero-decoration"></div>
-            </section>
-
-            <section className="section">
-              <div className="section-heading">
-                <div>
-                  <p className="eyebrow">TU RUTA DE APRENDIZAJE</p>
-                  <h2>Formación docente</h2>
-                </div>
-
-                <button
-                  className="text-button"
-                  onClick={() => cambiarSeccion('Formación docente')}
-                >
-                  Ver todos →
-                </button>
-              </div>
-
-              <div className="module-grid">
-                {modulos.slice(0, 4).map((modulo) => (
-                  <button
-                    className="module-card"
-                    key={modulo.id}
-                    onClick={() => {
-                      setModuloSeleccionado(modulo)
-                      setSeccion('Formación docente')
-                    }}
-                  >
-                    <span className="module-icon">{modulo.icono}</span>
-
-                    <span className="module-number">
-                      MÓDULO {String(modulo.id).padStart(2, '0')}
-                    </span>
-
-                    <strong>{modulo.titulo}</strong>
-
-                    <span className="module-description">
-                      {modulo.descripcion}
-                    </span>
-
-                    <span className="card-link">Explorar módulo →</span>
-                  </button>
-                ))}
-              </div>
-            </section>
-
-            <section className="quote">
-              <span>“</span>
-              <p>
-                El aprendizaje cobra sentido cuando dialoga con la vida,
-                la lengua y los conocimientos de la comunidad.
-              </p>
-            </section>
-          </>
-        )}
-
-        {/* FORMACIÓN DOCENTE */}
-        {seccion === 'Formación docente' && (
-          <section className="section">
-            {moduloSeleccionado ? (
-              <div className="detail-panel">
-                <button
-                  className="text-button"
-                  onClick={() => setModuloSeleccionado(null)}
-                >
-                  ← Volver a los módulos
-                </button>
-
-                <span className="module-icon">
-                  {moduloSeleccionado.icono}
-                </span>
-
-                <p className="eyebrow">
-                  MÓDULO {moduloSeleccionado.id}
-                </p>
-
-                <h2>{moduloSeleccionado.titulo}</h2>
-
-                <p>{moduloSeleccionado.descripcion}</p>
-
-                <p>
-                  Este espacio se completará con objetivos, contenidos,
-                  actividades y evidencias de aprendizaje validados a partir
-                  de los documentos del proyecto.
-                </p>
-              </div>
-            ) : (
-              <div className="module-grid">
-                {modulos.map((modulo) => (
-                  <button
-                    className="module-card"
-                    key={modulo.id}
-                    onClick={() => setModuloSeleccionado(modulo)}
-                  >
-                    <span className="module-icon">{modulo.icono}</span>
-
-                    <span className="module-number">
-                      MÓDULO {String(modulo.id).padStart(2, '0')}
-                    </span>
-
-                    <strong>{modulo.titulo}</strong>
-
-                    <span className="module-description">
-                      {modulo.descripcion}
-                    </span>
-
-                    <span className="card-link">Abrir módulo →</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </section>
-        )}
-
-        {/* BIBLIOTECA DE CLASES */}
-        {seccion === 'Biblioteca de clases' && (
-          <section className="section">
-            <p>
-              Explora actividades de ejemplo. Después las vincularemos con
-              las evidencias y los materiales reales del proyecto.
-            </p>
-
-            <input
-              className="search-input"
-              type="search"
-              placeholder="Buscar por título, tema o descripción..."
-              value={busqueda}
-              onChange={(evento) => setBusqueda(evento.target.value)}
-            />
-
-            <div className="lesson-list">
-              {actividadesFiltradas.map((actividad) => (
-                <button
-                  className="lesson-card"
-                  key={actividad.titulo}
-                  onClick={() => setActividadSeleccionada(actividad)}
-                >
-                  <span className="module-icon"></span>
-
-                  <span className="lesson-info">
-                    <span className="module-number">
-                      {actividad.categoria}
-                    </span>
-
-                    <strong>{actividad.titulo}</strong>
-
-                    <span>{actividad.descripcion}</span>
-
-                    <span className="module-number">
-                      {actividad.duracion}
-                    </span>
-                  </span>
-
-                  <span>→</span>
-                </button>
-              ))}
-
-              {actividadesFiltradas.length === 0 && (
-                <p>No encontramos actividades con esa búsqueda.</p>
-              )}
-            </div>
-
-            {actividadSeleccionada && (
-              <div className="detail-panel">
-                <button
-                  className="text-button"
-                  onClick={() => setActividadSeleccionada(null)}
-                >
-                  ← Volver a la biblioteca
-                </button>
-
-                <h2>{actividadSeleccionada.titulo}</h2>
-
-                <p>{actividadSeleccionada.descripcion}</p>
-
-                <p>
-                  <strong>Área:</strong>{' '}
-                  {actividadSeleccionada.categoria}
-                </p>
-
-                <p>
-                  <strong>Duración sugerida:</strong>{' '}
-                  {actividadSeleccionada.duracion}
-                </p>
-
-                <p>
-                  <strong>Nota:</strong> esta es una propuesta inicial,
-                  no una actividad oficial extraída de tus documentos.
-                </p>
-
-                <button
-                  className="primary-button"
-                  onClick={() => planearActividad(actividadSeleccionada)}
-                >
-                  Agregar al planeador →
-                </button>
-              </div>
-            )}
-          </section>
-        )}
-
-        {/* PLANEADOR DOCENTE INTERACTIVO */}
-        {seccion === 'Mi planeador' && (
-          <section className="section">
-            <div className="planner-intro">
-              <span className="module-icon"></span>
-
-              <h2>Organiza tus experiencias de aprendizaje</h2>
-
-              <p>
-                Planifica actividades relacionadas con el aula, la lengua
-                y los saberes de la comunidad.
-              </p>
-            </div>
-
-            <form className="planner-form" onSubmit={agregarActividad}>
-              <h3>Agregar actividad</h3>
-
-              <label htmlFor="titulo-actividad">
-                Nombre de la actividad
-              </label>
-
-              <input
-                id="titulo-actividad"
-                className="search-input"
-                type="text"
-                placeholder="Ej. Historias de nuestra comunidad"
-                value={nuevoTitulo}
-                onChange={(evento) => setNuevoTitulo(evento.target.value)}
-                required
-              />
-
-              <label htmlFor="area-actividad">
-                Área de aprendizaje
-              </label>
-
-              <select
-                id="area-actividad"
-                className="search-input"
-                value={nuevaArea}
-                onChange={(evento) => setNuevaArea(evento.target.value)}
-              >
-                {AREAS.map((area) => (
-                  <option key={area} value={area}>
-                    {area}
-                  </option>
-                ))}
-              </select>
-
-              <label htmlFor="fecha-actividad">
-                Fecha planeada
-              </label>
-
-              <input
-                id="fecha-actividad"
-                className="search-input"
-                type="date"
-                value={nuevaFecha}
-                onChange={(evento) => setNuevaFecha(evento.target.value)}
-                required
-              />
-
-              <button className="primary-button" type="submit">
-                + Guardar actividad
-              </button>
-
-              {mensaje && (
-                <p className="planner-message" role="status">
-                  {mensaje}
-                </p>
-              )}
-            </form>
-
-            <div className="planner-list">
-              <div className="section-heading">
-                <div>
-                  <p className="eyebrow">TU ORGANIZACIÓN</p>
-                  <h2>Actividades planeadas</h2>
-                </div>
-
-                <span className="planner-count">
-                  {actividadesPlaneadas.length}{' '}
-                  {actividadesPlaneadas.length === 1
-                    ? 'actividad'
-                    : 'actividades'}
-                </span>
-              </div>
-
-              {actividadesPlaneadas.length === 0 ? (
-                <div className="empty-planner">
-                  <h3>Tu planeador está listo</h3>
-                  <p>
-                    Agrega tu primera actividad para comenzar a organizar
-                    tus clases.
-                  </p>
-                </div>
-              ) : (
-                <div className="lesson-list">
-                  {actividadesPlaneadas.map((actividad) => (
-                    <article
-                      className="planned-card"
-                      key={actividad.id}
-                    >
-                      <div className="planned-date">
-                        <strong>{actividad.fecha}</strong>
-                      </div>
-
-                      <div className="lesson-info">
-                        <strong>{actividad.titulo}</strong>
-                        <span>{actividad.area}</span>
-                      </div>
-
-                      <button
-                        className="delete-button"
-                        type="button"
-                        onClick={() => eliminarActividad(actividad.id)}
-                        aria-label={`Eliminar ${actividad.titulo}`}
-                      >
-                        Eliminar
-                      </button>
-                    </article>
-                  ))}
-                </div>
-              )}
-            </div>
-          </section>
-        )}
-
-        <footer className="footer">
-          Aprender desde el territorio · Prototipo inicial
-        </footer>
-      </main>
-    </div>
-  )
+  function planearActividad(a: Actividad) { setNuevoTitulo(a.titulo); setNuevaArea(AREAS.includes(a.categoria) ? a.categoria : 'Otra'); setActividadSeleccionada(null); setSeccion('Mi planeador'); setMensaje('Elige una fecha para terminar de planificar esta actividad.') }
+  function eliminarActividad(id: number) { setActividadesPlaneadas(actuales => actuales.filter(a => a.id !== id)); setMensaje('Actividad eliminada del planeador.') }
+
+  return <div className="app-shell">
+    <aside className="sidebar">
+      <button className="brand" onClick={() => cambiarSeccion('Inicio')}><span className="brand-mark">AT</span><span className="brand-name">Aprender<small>desde el territorio</small></span></button>
+      <div className="sidebar-caption">ESPACIO DOCENTE</div>
+      <nav className="navigation" aria-label="Navegación principal">{secciones.map((nombre, i) => <button key={nombre} className={`nav-item ${seccion === nombre ? 'is-active' : ''}`} onClick={() => cambiarSeccion(nombre)}><span className="nav-number">{String(i + 1).padStart(2, '0')}</span><span>{nombre}</span></button>)}</nav>
+      <div className="sidebar-bottom"><div className="sidebar-rule"/><p>La comunidad también es un espacio de aprendizaje.</p></div>
+    </aside>
+    <main className="main-content">
+      
+
+      {seccion === 'Inicio' && <>
+        <section className="home-hero"><img src={FOTO_SIERRA} alt="Paisaje de la Sierra Norte de Puebla, municipio de Atempan"/><div className="hero-shade"/><div className="hero-copy"><h2>Enseñar también es escuchar al territorio.</h2><p>Explora ideas, recupera saberes comunitarios y diseña experiencias educativas conectadas con la lengua y la vida cotidiana.</p><button className="button button-light" onClick={() => cambiarSeccion('Formación docente')}>Explorar módulos <span>→</span></button></div><div className="photo-credit">Fotografía: Leti Padilla · Wikimedia Commons · CC BY-SA 4.0</div></section>
+        <section className="content-section home-modules"><div className="section-heading"><div><h2>Formación docente</h2></div><button className="inline-link" onClick={() => cambiarSeccion('Formación docente')}>Ver los 8 módulos <span>→</span></button></div><div className="module-grid">{modulos.slice(0, 4).map(m => <button className="module-card" key={m.id} onClick={() => { setModuloSeleccionado(m); setSeccion('Formación docente') }}><span className="card-index">MÓDULO {String(m.id).padStart(2, '0')}</span><strong>{m.titulo}</strong><span className="card-description">{m.descripcion}</span><span className="card-action">Consultar módulo <span>→</span></span></button>)}</div></section>
+        <section className="closing-quote"><span className="quote-line"/><p>El aprendizaje cobra sentido cuando dialoga con la vida, la lengua y los conocimientos de la comunidad.</p></section>
+      </>}
+
+      {seccion === 'Mapa de la problemática' && <section className="content-section page-content"><div className="intro-block"><p className="eyebrow">01 / CONTEXTO Y JUSTIFICACIÓN</p><h2>Una educación de calidad también debe reconocer la lengua y los saberes del territorio.</h2><p>Aprender desde el territorio busca contribuir a una educación más pertinente para la niñez totonaca de Lipuntahuaca, vinculando la práctica docente con la lengua, la cultura y los conocimientos de la comunidad.</p></div><div className="text-block"><p className="eyebrow">EL PROBLEMA SOCIAL</p><h3>Cuando la educación se aleja del contexto</h3><p>Una enseñanza que no considera suficientemente la lengua materna, los conocimientos comunitarios y las condiciones del territorio puede crear barreras para la participación y el aprendizaje significativo.</p></div><div className="issue-grid">{[['01','Pertinencia lingüística','La lengua de los estudiantes necesita tener un lugar significativo en las experiencias de aprendizaje.'],['02','Saberes comunitarios','Los conocimientos, las experiencias y la memoria de la comunidad pueden enriquecer los contenidos escolares.'],['03','Condiciones del territorio','La planeación educativa necesita considerar el entorno y las condiciones en las que aprenden los estudiantes.'],['04','Inclusión y participación','La colaboración entre docentes, familias y comunidad puede ayudar a construir experiencias más inclusivas.']].map(([n,t,d]) => <article className="issue-card" key={n}><span>{n}</span><h3>{t}</h3><p>{d}</p></article>)}</div><div className="ods-panel"><div className="ods-stamp"><span>OBJETIVO</span><strong>04</strong><small>ODS</small></div><div><p className="eyebrow">OBJETIVO DE DESARROLLO SOSTENIBLE</p><h3>Educación de calidad</h3><p>El proyecto se vincula con el ODS 4 de las Naciones Unidas, que busca garantizar una educación inclusiva, equitativa y de calidad, y promover oportunidades de aprendizaje durante toda la vida para todas las personas.</p><p><strong>Contribución propuesta:</strong> apoyar a los docentes en el diseño de actividades contextualizadas, inclusivas y vinculadas con la lengua y los saberes comunitarios.</p></div></div></section>}
+
+      {seccion === 'La solución' && <section className="content-section page-content"><div className="intro-block solution-intro"><p className="eyebrow">02 / LA PROPUESTA</p><h2>Del conocimiento del territorio a la planeación del aula.</h2><p>Aprender desde el territorio es un prototipo de apoyo docente que busca conectar la planeación educativa con la lengua tutunakú, la cultura local y los saberes comunitarios.</p><button className="button button-dark" onClick={() => cambiarSeccion('Mi planeador')}>Ir a mi planeador <span>→</span></button></div><div className="text-block"><p className="eyebrow">¿CÓMO FUNCIONA?</p><h3>Una ruta práctica para el docente</h3><p>La herramienta reúne espacios para explorar recursos, fortalecer la práctica educativa y organizar actividades.</p></div><div className="steps-list">{[['01','Explora','Consulta actividades de ejemplo en la biblioteca y encuentra propuestas por área de aprendizaje.','Biblioteca de clases'],['02','Contextualiza','Considera la lengua, las experiencias de los estudiantes y los conocimientos de su comunidad al adaptar una actividad.','Formación docente'],['03','Planea','Registra el nombre, el área y la fecha de una actividad para organizar tu trabajo docente.','Mi planeador']].map(([n,t,d,dest]) => <article className="step-row" key={n}><span className="step-number">{n}</span><div><h3>{t}</h3><p>{d}</p><button className="inline-link" onClick={() => cambiarSeccion(dest as Seccion)}>Ir a {dest.toLowerCase()} <span>→</span></button></div></article>)}</div><div className="benefit-block"><p className="eyebrow">BENEFICIO PARA EL USUARIO</p><h3>Planear con mayor pertinencia para el contexto.</h3><p>El beneficio esperado es facilitar la organización de experiencias de aprendizaje relacionadas con la lengua, la cultura y la vida comunitaria, ofreciendo al docente un espacio para explorar propuestas y planificar actividades.</p></div></section>}
+
+      {seccion === 'Formación docente' && <section className="content-section page-content">{moduloSeleccionado ? <div className="module-detail"><button className="inline-link back-link" onClick={() => setModuloSeleccionado(null)}>← Volver a los módulos</button><p className="eyebrow">MÓDULO {String(moduloSeleccionado.id).padStart(2, '0')}</p><h2>{moduloSeleccionado.titulo}</h2><p className="detail-lead">{moduloSeleccionado.descripcion}</p><div className="detail-content"><h3>Enfoque de trabajo</h3><p>{moduloSeleccionado.enfoque}</p><p className="source-note">Esta es una orientación inicial del prototipo. Debe revisarse y complementarse con el manual educativo y las fuentes del proyecto antes de su implementación.</p></div></div> : <><div className="page-lead"><p className="eyebrow">RECORRIDO FORMATIVO</p><h2>Ocho temas para reflexionar sobre la práctica docente.</h2><p>Selecciona un módulo para consultar su enfoque de trabajo. Los contenidos son una estructura inicial que se desarrollará con el manual educativo.</p></div><div className="module-grid all-modules">{modulos.map(m => <button className="module-card" key={m.id} onClick={() => setModuloSeleccionado(m)}><span className="card-index">MÓDULO {String(m.id).padStart(2, '0')}</span><strong>{m.titulo}</strong><span className="card-description">{m.descripcion}</span><span className="card-action">Abrir módulo <span>→</span></span></button>)}</div></>}</section>}
+
+      {seccion === 'Biblioteca de clases' && <section className="content-section page-content"><div className="page-lead"><h2>Ideas para comenzar a diseñar experiencias de aprendizaje.</h2></div><label className="search-label" htmlFor="buscar-actividad">BUSCAR ACTIVIDADES</label><input id="buscar-actividad" className="search-input" type="search" placeholder="Título, área o palabra clave" value={busqueda} onChange={e => setBusqueda(e.target.value)}/><div className="activity-list">{actividadesFiltradas.map(a => <button className="activity-row" key={a.id} onClick={() => setActividadSeleccionada(a)}><span className="activity-category">{a.categoria}</span><span className="activity-main"><strong>{a.titulo}</strong><small>{a.descripcion}</small></span><span className="activity-duration">{a.duracion}</span><span className="row-arrow">→</span></button>)}{actividadesFiltradas.length === 0 && <p className="empty-state">No encontramos actividades con esa búsqueda.</p>}</div>{actividadSeleccionada && <div className="activity-detail"><button className="inline-link" onClick={() => setActividadSeleccionada(null)}>← Volver a la biblioteca</button><p className="eyebrow">{actividadSeleccionada.categoria} · {actividadSeleccionada.duracion}</p><h3>{actividadSeleccionada.titulo}</h3><p>{actividadSeleccionada.descripcion}</p><p><strong>Propósito:</strong> {actividadSeleccionada.proposito}</p><p className="source-note">Propuesta de ejemplo creada para el prototipo; no es una actividad oficial extraída de los documentos del proyecto.</p><button className="button button-dark" onClick={() => planearActividad(actividadSeleccionada)}>Agregar al planeador <span>→</span></button></div>}</section>}
+
+      {seccion === 'Mi planeador' && <section className="content-section page-content planner-page"><div className="page-lead"><p className="eyebrow">ORGANIZACIÓN DOCENTE</p><h2>Organiza tus experiencias de aprendizaje.</h2><p>Registra actividades y consulta las fechas que has planeado. La información se conserva en este navegador.</p></div><form className="planner-form" onSubmit={agregarActividad}><h3>Nueva actividad</h3><label htmlFor="titulo-actividad">Nombre de la actividad</label><input id="titulo-actividad" className="search-input" type="text" placeholder="Ej. Historias de nuestra comunidad" value={nuevoTitulo} onChange={e => setNuevoTitulo(e.target.value)} required/><label htmlFor="area-actividad">Área de aprendizaje</label><select id="area-actividad" className="search-input" value={nuevaArea} onChange={e => setNuevaArea(e.target.value)}>{AREAS.map(a => <option key={a} value={a}>{a}</option>)}</select><label htmlFor="fecha-actividad">Fecha planeada</label><input id="fecha-actividad" className="search-input" type="date" value={nuevaFecha} onChange={e => setNuevaFecha(e.target.value)} required/><button className="button button-dark" type="submit">Guardar actividad <span>→</span></button>{mensaje && <p className="form-message" role="status">{mensaje}</p>}</form><div className="planned-section"><div className="section-heading"><div><p className="eyebrow">TU ORGANIZACIÓN</p><h3>Actividades planeadas</h3></div><span className="count-label">{actividadesPlaneadas.length} {actividadesPlaneadas.length === 1 ? 'actividad' : 'actividades'}</span></div>{actividadesPlaneadas.length === 0 ? <div className="empty-state">Tu planeador está listo. Agrega tu primera actividad para comenzar a organizar tus clases.</div> : <div className="planned-list">{actividadesPlaneadas.map(a => <article className="planned-row" key={a.id}><time dateTime={a.fecha}>{new Date(`${a.fecha}T12:00:00`).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })}</time><div><strong>{a.titulo}</strong><span>{a.area}</span></div><button className="delete-button" type="button" onClick={() => eliminarActividad(a.id)} aria-label={`Eliminar ${a.titulo}`}>Eliminar</button></article>)}</div>}</div></section>}
+    </main>
+  </div>
 }
 
 export default App
