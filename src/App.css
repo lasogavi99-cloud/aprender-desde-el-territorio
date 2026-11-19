@@ -56,3 +56,10 @@
     height: 250px;
   }
 }
+
+.site-logo {
+  display: block;
+  width: 150px;
+  height: auto;
+  object-fit: contain;
+}
