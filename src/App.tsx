@@ -72,11 +72,15 @@ function App() {
 
   return <div className="app-shell">
     <aside className="sidebar">
-      <button className="brand" onClick={() => cambiarSeccion('Inicio')}><span className="brand-name"><img
-  src="/images/logo-aprender.png"
+      <button className="brand" onClick={() => cambiarSeccion('Inicio')}><span className="brand-name">
+  <img
+  src="/logo-aprender.png"
   alt="Aprender desde el territorio"
   className="site-logo"
-/></span></button>
+/>
+  alt="Aprender desde el territorio"
+  className="site-logo"
+/</span></button>
       <div className="sidebar-caption">ESPACIO DOCENTE</div>
       <nav className="navigation" aria-label="Navegación principal">{secciones.map((nombre, i) => <button key={nombre} className={`nav-item ${seccion === nombre ? 'is-active' : ''}`} onClick={() => cambiarSeccion(nombre)}><span className="nav-number">{String(i + 1).padStart(2, '0')}</span><span>{nombre}</span></button>)}</nav>
       <div className="sidebar-bottom"><div className="sidebar-rule"/><p>La comunidad también es un espacio de aprendizaje.</p></div>
