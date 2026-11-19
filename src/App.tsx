@@ -73,8 +73,7 @@ function App() {
   return <div className="app-shell">
     <aside className="sidebar">
       <button className="brand" onClick={() => cambiarSeccion('Inicio')}><span className="brand-name"><img
-  src="/descargas/logo-aprender.png"
-  alt="Aprender desde el territorio"
+  src="/aprender-desde-el-territorio-publicacion/Aprender desde el territorio.png"
   className="site-logo"
 /></span></button>
       <div className="sidebar-caption">ESPACIO DOCENTE</div>
