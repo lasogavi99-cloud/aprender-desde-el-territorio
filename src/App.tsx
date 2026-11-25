@@ -5,7 +5,8 @@ import './App.css'
 type Seccion = 'Inicio' | 'Mapa de la problemática' | 'La solución' | 'Formación docente' | 'Biblioteca de clases' | 'Mi planeador'
 type Modulo = { id: number; titulo: string; descripcion: string; enfoque: string }
 type Actividad = { id: number; titulo: string; categoria: string; descripcion: string; duracion: string; proposito: string }
-type ActividadPlaneada = { id: number; titulo: string; area: string; fecha: string }
+type ActividadPlaneada = { id: number; titulo: string; area: string; fecha: string; contenido?: string }
+type MensajeChat = { id: number; rol: 'assistant' | 'user'; contenido: string }
 
 const secciones: Seccion[] = ['Inicio', 'Mapa de la problemática', 'La solución', 'Formación docente', 'Biblioteca de clases', 'Mi planeador']
 const modulos: Modulo[] = [
@@ -24,6 +25,62 @@ const actividades: Actividad[] = [
   { id: 3, titulo: 'Historias de nuestra comunidad', categoria: 'Lengua y cultura', descripcion: 'Recuperar relatos familiares y conversar sobre la memoria comunitaria, con autorización de quienes participan.', duracion: '45 minutos', proposito: 'Reconocer la oralidad y la memoria local como fuentes de aprendizaje.' },
 ]
 const AREAS = ['Lengua y cultura', 'Matemáticas', 'Ciencias', 'Saberes comunitarios', 'Planeación interdisciplinaria', 'Otra']
+
+type DatosPlaneacion = {
+  tema: string
+  area: string
+  grado: string
+  cantidad: string
+  duracion: string
+  contexto: string
+  lengua: string
+}
+
+function generarRespuestaGuiada(datos: DatosPlaneacion): string {
+  const contexto = datos.contexto.trim() || 'situaciones y elementos cercanos que el docente conozca y haya validado con el grupo'
+  const cantidad = datos.cantidad.trim() || 'por definir'
+  const tema = datos.tema.trim()
+
+  return `PROPUESTA DE PLANEACIÓN
+
+DATOS DEL GRUPO
+- Tema: ${tema}
+- Área: ${datos.area}
+- Grado: ${datos.grado}
+- Número de estudiantes: ${cantidad}
+- Duración: ${datos.duracion}
+- Lengua de participación: ${datos.lengua}
+
+PROPÓSITO DE APRENDIZAJE
+Que las y los estudiantes exploren ${tema.toLowerCase()}, recuperen lo que ya saben y relacionen el contenido con experiencias de su entorno.
+
+INICIO · ${Math.max(5, Math.round(parseInt(datos.duracion, 10) * 0.2))} minutos
+Plantea una pregunta detonadora sobre ${tema.toLowerCase()}. Da tiempo para que el grupo comparta ideas, experiencias y preguntas. Permite responder oralmente, mediante dibujos o en la lengua en la que se sientan más cómodos.
+
+DESARROLLO · ${Math.max(10, Math.round(parseInt(datos.duracion, 10) * 0.6))} minutos
+Organiza equipos pequeños para realizar una actividad de observación, exploración o resolución de un reto relacionado con el tema. Utiliza como punto de partida: ${contexto}. Pide que registren sus hallazgos con dibujos, palabras, esquemas o explicaciones orales.
+
+CIERRE · ${Math.max(5, parseInt(datos.duracion, 10) - Math.max(5, Math.round(parseInt(datos.duracion, 10) * 0.2)) - Math.max(10, Math.round(parseInt(datos.duracion, 10) * 0.6)))} minutos
+Invita a los equipos a compartir qué descubrieron y qué relación encuentran con su vida cotidiana. Cierra con una pregunta de reflexión y recupera los aprendizajes principales.
+
+MATERIALES
+Cuadernos, hojas, lápices y materiales disponibles en el aula o en el entorno que sean seguros y pertinentes. Ajusta la selección a los recursos reales del grupo.
+
+EVALUACIÓN FORMATIVA
+Observa si cada estudiante:
+- Expresa una idea o pregunta relacionada con el tema.
+- Participa en la exploración y colabora con su equipo.
+- Comunica lo que observó mediante alguna forma de expresión.
+
+Puedes registrar las evidencias con una lista de cotejo, notas de observación o producciones del alumnado.
+
+VINCULACIÓN CON EL TERRITORIO
+Contextualiza la actividad a partir de ${contexto}. Si incorporas conocimientos de familias o personas de la comunidad, consulta y reconoce sus aportaciones. Considera la lengua ${datos.lengua} como una posibilidad para dialogar y aprender.
+
+RECOMENDACIÓN PARA EL DOCENTE
+Esta propuesta es un punto de partida, no una planeación oficial. Ajusta los tiempos, materiales y ejemplos a tu grupo. Verifica con el manual educativo y con personas de la comunidad cualquier dato cultural o lingüístico; no se proponen traducciones ni afirmaciones locales no verificadas.`
+}
+
 const FOTO_SIERRA = 'https://commons.wikimedia.org/wiki/Special:FilePath/SIERRA_NORTE_DE_PUEBLA_MUNICIPIO_DE_ATEMPAN.jpg?width=1800'
 const FOTOS_SECCIONES = {
   problematica: 'https://graficoaldia.mx/wp-content/uploads/2025/03/foto-5-2.jpg',
@@ -52,6 +109,16 @@ function App() {
   const [nuevaArea, setNuevaArea] = useState('Lengua y cultura')
   const [nuevaFecha, setNuevaFecha] = useState('')
   const [mensaje, setMensaje] = useState('')
+  const [chatAbierto, setChatAbierto] = useState(false)
+  const [datosPlaneacion, setDatosPlaneacion] = useState<DatosPlaneacion>({
+    tema: '', area: 'Ciencias', grado: 'Tercer grado', cantidad: '', duracion: '40', contexto: '', lengua: 'Tutunakú y español'
+  })
+  const [fechaGuardarPlan, setFechaGuardarPlan] = useState('')
+  const [ultimaPlaneacion, setUltimaPlaneacion] = useState<{ titulo: string; area: string; contenido: string } | null>(null)
+  const [actividadesExpandidas, setActividadesExpandidas] = useState<number[]>([])
+  const [mensajesChat, setMensajesChat] = useState<MensajeChat[]>([
+    { id: 1, rol: 'assistant', contenido: '¡Hola! Vamos a diseñar una clase paso a paso. Completa los datos de tu grupo y prepararé una propuesta que puedas adaptar a tu contexto.' }
+  ])
 
   useEffect(() => {
     try { localStorage.setItem('territorio-plan', JSON.stringify(actividadesPlaneadas)) }
@@ -59,6 +126,39 @@ function App() {
   }, [actividadesPlaneadas])
 
   const actividadesFiltradas = useMemo(() => actividades.filter(a => `${a.titulo} ${a.categoria} ${a.descripcion}`.toLowerCase().includes(busqueda.toLowerCase())), [busqueda])
+  function actualizarDatoPlaneacion(campo: keyof DatosPlaneacion, valor: string) {
+    setDatosPlaneacion(actuales => ({ ...actuales, [campo]: valor }))
+  }
+
+  function generarPlaneacion(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    const tema = datosPlaneacion.tema.trim()
+    if (!tema) return
+    const resumen = `${datosPlaneacion.area} · ${datosPlaneacion.grado} · ${datosPlaneacion.duracion} minutos · ${tema}`
+    const respuesta = generarRespuestaGuiada(datosPlaneacion)
+    setMensajesChat(actuales => [
+      ...actuales,
+      { id: Date.now(), rol: 'user', contenido: `Quiero planear: ${resumen}` },
+      { id: Date.now() + 1, rol: 'assistant', contenido: respuesta }
+    ])
+    setUltimaPlaneacion({ titulo: tema, area: datosPlaneacion.area, contenido: respuesta })
+  }
+
+  function guardarPlaneacionEnMiPlaneador() {
+    if (!ultimaPlaneacion || !fechaGuardarPlan) return
+    setActividadesPlaneadas(actuales => [...actuales, {
+      id: Date.now(),
+      titulo: ultimaPlaneacion.titulo,
+      area: AREAS.includes(ultimaPlaneacion.area) ? ultimaPlaneacion.area : 'Otra',
+      fecha: fechaGuardarPlan,
+      contenido: ultimaPlaneacion.contenido
+    }].sort((a, b) => a.fecha.localeCompare(b.fecha)))
+    setFechaGuardarPlan('')
+    setMensaje('La planeación se agregó a Mi planeador.')
+    setSeccion('Mi planeador')
+    setChatAbierto(false)
+  }
+
   function cambiarSeccion(nombre: Seccion) { setSeccion(nombre); setModuloSeleccionado(null); setActividadSeleccionada(null); setMensaje(''); setBusqueda('') }
   function agregarActividad(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -121,8 +221,71 @@ function App() {
 
       {seccion === 'Biblioteca de clases' && <section className="content-section page-content"><div className="page-lead"><h2>Ideas para comenzar a diseñar experiencias de aprendizaje.</h2></div><figure className="section-photo"><img src={FOTOS_SECCIONES.biblioteca} alt="Libros y materiales para preparar actividades educativas" loading="lazy"/><figcaption>Recursos para diseñar actividades vinculadas con el entorno y la comunidad.</figcaption></figure><label className="search-label" htmlFor="buscar-actividad">BUSCAR ACTIVIDADES</label><input id="buscar-actividad" className="search-input" type="search" placeholder="Título, área o palabra clave" value={busqueda} onChange={e => setBusqueda(e.target.value)}/><div className="activity-list">{actividadesFiltradas.map(a => <button className="activity-row" key={a.id} onClick={() => setActividadSeleccionada(a)}><span className="activity-category">{a.categoria}</span><span className="activity-main"><strong>{a.titulo}</strong><small>{a.descripcion}</small></span><span className="activity-duration">{a.duracion}</span><span className="row-arrow">→</span></button>)}{actividadesFiltradas.length === 0 && <p className="empty-state">No encontramos actividades con esa búsqueda.</p>}</div>{actividadSeleccionada && <div className="activity-detail"><button className="inline-link" onClick={() => setActividadSeleccionada(null)}>← Volver a la biblioteca</button><p className="eyebrow">{actividadSeleccionada.categoria} · {actividadSeleccionada.duracion}</p><h3>{actividadSeleccionada.titulo}</h3><p>{actividadSeleccionada.descripcion}</p><p><strong>Propósito:</strong> {actividadSeleccionada.proposito}</p><p className="source-note">Propuesta de ejemplo creada para el prototipo; no es una actividad oficial extraída de los documentos del proyecto.</p><button className="button button-dark" onClick={() => planearActividad(actividadSeleccionada)}>Agregar al planeador <span>→</span></button></div>}</section>}
 
-      {seccion === 'Mi planeador' && <section className="content-section page-content planner-page"><div className="page-lead"><p className="eyebrow">ORGANIZACIÓN DOCENTE</p><h2>Organiza tus experiencias de aprendizaje.</h2><p>Registra actividades y consulta las fechas que has planeado. La información se conserva en este navegador.</p></div><figure className="section-photo planner-photo"></figure><form className="planner-form" onSubmit={agregarActividad}><h3>Nueva actividad</h3><label htmlFor="titulo-actividad">Nombre de la actividad</label><input id="titulo-actividad" className="search-input" type="text" placeholder="Ej. Historias de nuestra comunidad" value={nuevoTitulo} onChange={e => setNuevoTitulo(e.target.value)} required/><label htmlFor="area-actividad">Área de aprendizaje</label><select id="area-actividad" className="search-input" value={nuevaArea} onChange={e => setNuevaArea(e.target.value)}>{AREAS.map(a => <option key={a} value={a}>{a}</option>)}</select><label htmlFor="fecha-actividad">Fecha planeada</label><input id="fecha-actividad" className="search-input" type="date" value={nuevaFecha} onChange={e => setNuevaFecha(e.target.value)} required/><button className="button button-dark" type="submit">Guardar actividad <span>→</span></button>{mensaje && <p className="form-message" role="status">{mensaje}</p>}</form><div className="planned-section"><div className="section-heading"><div><p className="eyebrow">TU ORGANIZACIÓN</p><h3>Actividades planeadas</h3></div><span className="count-label">{actividadesPlaneadas.length} {actividadesPlaneadas.length === 1 ? 'actividad' : 'actividades'}</span></div>{actividadesPlaneadas.length === 0 ? <div className="empty-state">Tu planeador está listo. Agrega tu primera actividad para comenzar a organizar tus clases.</div> : <div className="planned-list">{actividadesPlaneadas.map(a => <article className="planned-row" key={a.id}><time dateTime={a.fecha}>{new Date(`${a.fecha}T12:00:00`).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })}</time><div><strong>{a.titulo}</strong><span>{a.area}</span></div><button className="delete-button" type="button" onClick={() => eliminarActividad(a.id)} aria-label={`Eliminar ${a.titulo}`}>Eliminar</button></article>)}</div>}</div></section>}
+      {seccion === 'Mi planeador' && <section className="content-section page-content planner-page"><div className="page-lead"><p className="eyebrow">ORGANIZACIÓN DOCENTE</p><h2>Organiza tus experiencias de aprendizaje.</h2><p>Registra actividades y consulta las fechas que has planeado. La información se conserva en este navegador.</p></div><figure className="section-photo planner-photo"></figure><form className="planner-form" onSubmit={agregarActividad}><h3>Nueva actividad</h3><label htmlFor="titulo-actividad">Nombre de la actividad</label><input id="titulo-actividad" className="search-input" type="text" placeholder="Ej. Historias de nuestra comunidad" value={nuevoTitulo} onChange={e => setNuevoTitulo(e.target.value)} required/><label htmlFor="area-actividad">Área de aprendizaje</label><select id="area-actividad" className="search-input" value={nuevaArea} onChange={e => setNuevaArea(e.target.value)}>{AREAS.map(a => <option key={a} value={a}>{a}</option>)}</select><label htmlFor="fecha-actividad">Fecha planeada</label><input id="fecha-actividad" className="search-input" type="date" value={nuevaFecha} onChange={e => setNuevaFecha(e.target.value)} required/><button className="button button-dark" type="submit">Guardar actividad <span>→</span></button>{mensaje && <p className="form-message" role="status">{mensaje}</p>}</form><div className="planned-section"><div className="section-heading"><div><p className="eyebrow">TU ORGANIZACIÓN</p><h3>Actividades planeadas</h3></div><span className="count-label">{actividadesPlaneadas.length} {actividadesPlaneadas.length === 1 ? 'actividad' : 'actividades'}</span></div>{actividadesPlaneadas.length === 0 ? <div className="empty-state">Tu planeador está listo. Agrega tu primera actividad para comenzar a organizar tus clases.</div> : <div className="planned-list">{actividadesPlaneadas.map(a => <article className="planned-row planned-row-expanded" key={a.id}>
+          <time dateTime={a.fecha}>{new Date(`${a.fecha}T12:00:00`).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })}</time>
+          <div className="planned-row-content">
+            <strong>{a.titulo}</strong><span>{a.area}</span>
+            <button className="inline-link planned-details-toggle" type="button" onClick={() => setActividadesExpandidas(actuales => actuales.includes(a.id) ? actuales.filter(id => id !== a.id) : [...actuales, a.id])}>
+              {actividadesExpandidas.includes(a.id) ? 'Ocultar planeación ↑' : 'Ver planeación ↓'}
+            </button>
+            {actividadesExpandidas.includes(a.id) && <div className="planned-detail-text">{a.contenido || 'Esta actividad se guardó antes de habilitar el almacenamiento de la planeación completa. Solo se conservó su título, área y fecha.'}</div>}
+          </div>
+          <button className="delete-button" type="button" onClick={() => eliminarActividad(a.id)} aria-label={`Eliminar ${a.titulo}`}>Eliminar</button>
+        </article>)}</div>}</div></section>}
     </main>
+
+    <div className="planning-assistant">
+      {chatAbierto && <section className="assistant-panel" aria-label="Asistente de planeación">
+        <header className="assistant-header">
+          <div>
+            <p className="eyebrow">APRENDER DESDE EL TERRITORIO</p>
+            <h2>Asistente de planeación</h2>
+            <span>Modo demostración · sin conexión a IA</span>
+          </div>
+          <button type="button" className="assistant-close" onClick={() => setChatAbierto(false)} aria-label="Cerrar asistente">×</button>
+        </header>
+        <form className="assistant-form assistant-guided-form" onSubmit={generarPlaneacion}>
+          <p className="assistant-form-intro">Cuéntame sobre tu grupo para adaptar la propuesta.</p>
+          <label htmlFor="assistant-area">Área de aprendizaje</label>
+          <select id="assistant-area" value={datosPlaneacion.area} onChange={e => actualizarDatoPlaneacion('area', e.target.value)}>
+            {AREAS.map(area => <option key={area} value={area}>{area}</option>)}
+          </select>
+          <label htmlFor="assistant-grade">Grado escolar</label>
+          <select id="assistant-grade" value={datosPlaneacion.grado} onChange={e => actualizarDatoPlaneacion('grado', e.target.value)}>
+            {['Primero', 'Segundo', 'Tercer', 'Cuarto', 'Quinto', 'Sexto'].map(grado => <option key={grado} value={`${grado} grado`}>{grado} grado</option>)}
+          </select>
+          <label htmlFor="assistant-topic">Tema de la clase</label>
+          <input id="assistant-topic" value={datosPlaneacion.tema} onChange={e => actualizarDatoPlaneacion('tema', e.target.value)} placeholder="Ej. El entorno natural" required />
+          <div className="assistant-fields-row">
+            <div><label htmlFor="assistant-count">Número de estudiantes</label><input id="assistant-count" type="number" min="1" max="100" value={datosPlaneacion.cantidad} onChange={e => actualizarDatoPlaneacion('cantidad', e.target.value)} placeholder="Ej. 25" /></div>
+            <div><label htmlFor="assistant-duration">Duración (minutos)</label><select id="assistant-duration" value={datosPlaneacion.duracion} onChange={e => actualizarDatoPlaneacion('duracion', e.target.value)}>{['30', '40', '45', '50', '60', '90'].map(t => <option key={t} value={t}>{t} min</option>)}</select></div>
+          </div>
+          <label htmlFor="assistant-context">¿Qué elemento de la comunidad o del entorno te gustaría integrar?</label>
+          <textarea id="assistant-context" value={datosPlaneacion.contexto} onChange={e => actualizarDatoPlaneacion('contexto', e.target.value)} placeholder="Ej. plantas de la región, actividades familiares, espacios de la comunidad..." rows={2}/>
+          <label htmlFor="assistant-language">Lengua para trabajar en clase</label>
+          <select id="assistant-language" value={datosPlaneacion.lengua} onChange={e => actualizarDatoPlaneacion('lengua', e.target.value)}>
+            <option>Tutunakú y español</option><option>Tutunakú</option><option>Español</option><option>Según las preferencias del grupo</option>
+          </select>
+          <button className="button button-dark" type="submit" disabled={!datosPlaneacion.tema.trim()}>Crear planeación <span>→</span></button>
+        </form>
+        {mensajesChat.length > 1 && <div className="assistant-result-heading">Tu propuesta de planeación</div>}
+        <div className="assistant-messages" aria-live="polite">
+          {mensajesChat.map(m => <article key={m.id} className={`assistant-message ${m.rol === 'user' ? 'is-user' : 'is-assistant'}`}>
+            {m.contenido.split('\n').map((linea, i) => <p key={i}>{linea}</p>)}
+          </article>)}
+        </div>
+        {ultimaPlaneacion && <div className="assistant-save-plan">
+          <label htmlFor="assistant-save-date">Guardar esta actividad en Mi planeador</label>
+          <input id="assistant-save-date" type="date" value={fechaGuardarPlan} onChange={e => setFechaGuardarPlan(e.target.value)} />
+          <button className="button button-dark" type="button" onClick={guardarPlaneacionEnMiPlaneador} disabled={!fechaGuardarPlan}>Guardar en mi planeador</button>
+        </div>}
+        <p className="assistant-disclaimer">Esta versión usa una plantilla local. Sus propuestas son orientativas y deben adaptarse y revisarse con el manual educativo y el contexto de la comunidad.</p>
+      </section>}
+      <button type="button" className="assistant-launcher" onClick={() => setChatAbierto(abierto => !abierto)} aria-expanded={chatAbierto} aria-label={chatAbierto ? 'Cerrar asistente de planeación' : 'Abrir asistente de planeación'}>
+        <span className="assistant-launcher-mark">A</span>
+        <span>{chatAbierto ? 'Cerrar asistente' : 'Asistente de planeación'}</span>
+      </button>
+    </div>
   </div>
 }
 
